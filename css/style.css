@@ -76,9 +76,13 @@ canvas {
   z-index: 10;
 }
 
-/* ── Responsive: stack buttons on small screens ── */
+/* ── Responsive: mobile ── */
+@media (max-width: 768px) {
+  #sound-btn { right: 8px; bottom: 8px; font-size: 12px; padding: 6px 10px; }
+  #tumble-btn { right: 8px; bottom: 44px; font-size: 12px; padding: 6px 10px; }
+  #version-tag { display: none; }
+}
 @media (max-width: 360px) {
-  #sound-btn { right: 12px; bottom: 12px; font-size: 12px; padding: 6px 10px; }
-  #tumble-btn { right: 12px; bottom: 50px; font-size: 12px; padding: 6px 10px; }
-  #version-tag { bottom: 12px; left: 12px; font-size: 10px; }
+  #sound-btn { right: 6px; bottom: 6px; font-size: 11px; padding: 5px 8px; }
+  #tumble-btn { right: 6px; bottom: 38px; font-size: 11px; padding: 5px 8px; }
 }

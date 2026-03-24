@@ -12,7 +12,9 @@ const ctx = canvas.getContext('2d');
 // ── Canvas sizing ──
 function resize() {
   S.setDpr(window.devicePixelRatio || 1);
-  S.setCanvasScale(Math.min(window.innerWidth / S.BASE_W, window.innerHeight / S.BASE_H) * 0.85);
+  const isMobile = window.innerWidth <= 768;
+  const scaleFactor = isMobile ? 0.98 : 0.85;
+  S.setCanvasScale(Math.min(window.innerWidth / S.BASE_W, window.innerHeight / S.BASE_H) * scaleFactor);
   canvas.width = S.BASE_W * S.canvasScale * S.dpr;
   canvas.height = S.BASE_H * S.canvasScale * S.dpr;
   canvas.style.width = S.BASE_W * S.canvasScale + 'px';
