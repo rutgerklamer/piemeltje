@@ -874,13 +874,13 @@ function drawJunctionShading(ctx, geo, balls, p) {
   const { leftO, rightO } = geo;
   const { lx, ly, rx, ry, sxL, syL, sxR, syR } = balls;
 
-  // AO darkening where shaft meets scrotum
   const jMidX = (leftO[0][0] + rightO[0][0]) / 2;
   const jTopY = (leftO[0][1] + rightO[0][1]) / 2;
   const shaftBaseW = Math.abs(rightO[0][0] - leftO[0][0]);
   const aoWidth = Math.max(shaftBaseW, (sxL + sxR)) * 0.85;
   const aoHeight = Math.abs(Math.max(ly, ry) - jTopY) * 0.7;
 
+  // AO darkening where shaft meets scrotum
   if (aoHeight > 2 && aoWidth > 2) {
     const aoGrad = ctx.createRadialGradient(
       jMidX, jTopY + aoHeight * 0.3, aoHeight * 0.08,
@@ -915,8 +915,10 @@ function drawShaftShading(ctx, geo, p, localLight) {
   ctx.clip();
 
   // Shadow side strip
+  const BASE_FADE = 9; // fade shading over first N segments to blend into scrotum
   for (let i = 0; i < SL - 1; i++) {
     const t = i / (SL - 1);
+    const baseFade = Math.min(i / BASE_FADE, 1); // 0 at base, 1 after BASE_FADE segments
     const [nx, ny] = normals[i];
     const [px, py] = positions[i];
     const [px2, py2] = positions[i + 1];
@@ -926,8 +928,8 @@ function drawShaftShading(ctx, geo, p, localLight) {
     const d1 = diffuse(nx, ny, localLight.x, localLight.y);
     const d2 = diffuse(nx2, ny2, localLight.x, localLight.y);
 
-    const shadowAlpha1 = clamp((1 - d1) * 0.25, 0, 0.25);
-    const shadowAlpha2 = clamp((1 - d2) * 0.25, 0, 0.25);
+    const shadowAlpha1 = clamp((1 - d1) * 0.25, 0, 0.25) * baseFade;
+    const shadowAlpha2 = clamp((1 - d2) * 0.25, 0, 0.25) * baseFade;
 
     if (shadowAlpha1 > 0.01 || shadowAlpha2 > 0.01) {
       const dot1 = nx * localLight.x + ny * localLight.y;
@@ -946,8 +948,8 @@ function drawShaftShading(ctx, geo, p, localLight) {
     }
 
     // Highlight on the lit side
-    const hlAlpha1 = clamp((d1 - 0.6) * 0.3, 0, 0.15);
-    const hlAlpha2 = clamp((d2 - 0.6) * 0.3, 0, 0.15);
+    const hlAlpha1 = clamp((d1 - 0.6) * 0.3, 0, 0.15) * baseFade;
+    const hlAlpha2 = clamp((d2 - 0.6) * 0.3, 0, 0.15) * baseFade;
 
     if (hlAlpha1 > 0.005 || hlAlpha2 > 0.005) {
       const hlSide = (nx * localLight.x + ny * localLight.y) > 0 ? 1 : -1;
@@ -1790,21 +1792,28 @@ export function draw(ctx, canvas) {
   // Volume gradient (entire body)
   drawVolumeGradient(ctx, geo, balls, p, localLight);
 
-  // Ball details — scrotum-only clip (everything MINUS shaft)
-  // This ensures ball shading/pores/hairs don't bleed onto the shaft.
-  // The junction zone shows only the unified skin fill — seamless.
+  // Ball details — scrotum-only clip (everything MINUS upper shaft)
+  // Start the exclusion a few segments up from the base so ball shading
+  // bleeds into the shaft base zone, creating a smooth skin transition.
   ctx.save();
   ctx.beginPath();
   ctx.rect(-S.BASE_W, -S.BASE_H, S.BASE_W * 4, S.BASE_H * 4);
-  traceShaftPath(ctx, geo.leftO, geo.rightO, geo.SL);
+  {
+    const BLEND_SEGS = Math.min(9, geo.SL - 1);
+    ctx.moveTo(geo.leftO[BLEND_SEGS][0], geo.leftO[BLEND_SEGS][1]);
+    for (let i = BLEND_SEGS + 1; i < geo.SL; i++) ctx.lineTo(geo.leftO[i][0], geo.leftO[i][1]);
+    ctx.lineTo(geo.rightO[geo.SL - 1][0], geo.rightO[geo.SL - 1][1]);
+    for (let i = geo.SL - 2; i >= BLEND_SEGS; i--) ctx.lineTo(geo.rightO[i][0], geo.rightO[i][1]);
+    ctx.closePath();
+  }
   ctx.clip('evenodd');
   drawBalls(ctx, geo, balls, p, localLight);
   ctx.restore();
 
   // Shaft details (drawShaftShading clips to shaft internally)
+  drawGlans(ctx, geo, p, localLight);
   drawShaftShading(ctx, geo, p, localLight);
   drawVeins(ctx, geo, p);
-  drawGlans(ctx, geo, p, localLight);
 
   // Effects
   drawHeartbeatPulse(ctx, geo);
